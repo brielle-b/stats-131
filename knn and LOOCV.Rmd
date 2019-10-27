@@ -1,0 +1,187 @@
+---
+title: "knn and LOOCV"
+author: "Brielle Balswick"
+date: "10/16/2019"
+output: html_document
+---
+
+
+#4.7.4
+
+a) 10% of the data
+
+b) b-a = d-c= 0.1, 0.1 *0.1 =0.01
+
+c) 0.1^100, a very small percent is being used to make prediction..
+
+d) A large number of predictors means 
+
+e) d= 10^(-1/p)
+  p= 100, d =0.9772
+  p= 2, d = 0.3162
+  
+```{r}
+10^(-1/2)
+10^(-1/100)
+```
+
+
+
+#4.7.10
+```{r}
+library(ISLR)
+library(MASS)
+library(class)
+data("Weekly")
+```
+
+e)
+```{r}
+train <- Weekly[Weekly$Year < 2009,]
+test <- Weekly[Weekly$Year >= 2009, ]
+
+mlda<- lda(Direction~Lag2, data = train)
+probs<- predict(mlda,newdata=test)
+pred<- probs$class
+table(pred, test$Direction)
+mean(pred==test$Direction)
+```
+
+
+f)
+```{r}
+mqda<-qda(Direction~Lag2,data = train)
+qprob<- predict(mqda, newdata= test)
+qpred<- qprob$class
+table(qpred, test$Direction)
+mean(qpred==test$Direction)
+```
+
+h) 
+```{r}
+k1 <- knn(data.frame(train$Lag2),data.frame(test$Lag2),cl = train$Direction, k = 1)
+table(k1,test$Direction)
+mean(k1==test$Direction)
+```
+
+Based on accuracy, the LDA model in part e) is the best at predicting.
+
+#5.4.5
+
+a)
+```{r}
+m1<- glm(default~income +balance, data=Default, family = "binomial")
+summary(m1)
+```
+
+b)
+```{r}
+test_error<-function(prob, new_seed){
+  set.seed(new_seed)
+  training<- sample(1:nrow(Default),nrow(Default)*prob)
+  def_train<- Default[training,]
+  def_test<-Default[-training,]
+  m2<- glm(default~income +balance, data = def_train, family = "binomial")
+  preds<- predict(m2, newdata=def_test, type="response")
+  preds<- ifelse(preds>0.5, "Yes", "No")
+  l<-mean(preds != def_test$default)
+  l
+}
+
+test_error(prob=0.7,new_seed= 123)
+```
+
+c)For part c, use seeds 234 for the 2nd split and 345 for the third split.
+```{r}
+test_error(0.7,234)
+test_error(0.7,345)
+```
+
+The differences between the different splits of data are very similar but not the same. This sounds about right because even though the testing and training data is different, the overall set of data is the same.
+
+d)
+```{r} 
+# same
+set.seed(123)
+training<- sample(1:nrow(Default),nrow(Default)*0.7)
+  def_train<- Default[training,]
+  def_test<-Default[-training,]
+  m3<- glm(default~income +balance+ student, data = def_train, family = "binomial")
+  preds<- predict(m3, newdata=def_test,type= "response")
+  preds<- ifelse(preds>0.5, "Yes", "No")
+  l<-mean(preds != def_test$default)
+  l
+```
+The predictor does slightly better with the dummie variable, but the difference is not large at all.
+
+#5.4.7
+
+a)
+```{r}
+m4<- glm(Direction~Lag1+Lag2, data=Weekly, family = "binomial")
+summary(m4)
+```
+
+b)
+```{r}
+rem_obs<- Weekly[-1,]
+m5<-glm(Direction~Lag1+Lag2, data=Weekly, family = "binomial")
+summary(m5)
+```
+
+c)
+```{r}
+first<-Weekly[1,]
+up_prob<- predict(m5,newdata=first, type="response")
+ifelse(up_prob>=0.5,"Up","Down")
+
+```
+We know that the first observation should be classified as "Down", but it was classified as "Up" using our model. So our model is not accurate here
+
+d)
+```{r}
+n<-nrow(Weekly)
+result<- rep(0, n)
+for (i in 1:n){
+  rem_i<-Weekly[-i,]
+  m6<- glm(Direction~Lag1 +Lag2, data=rem_i, family="binomial")
+  pred_i<- predict(m6, newdata=Weekly[i,], type="response")
+  pred_i<- ifelse(pred_i>0.5, "Up","Down")
+  result[i]<-ifelse(pred_i==Weekly$Direction[i],1,0)
+}
+table(result)
+```
+
+e) For the result from the average error of each predicted observation, it is about 45% inaccurately predicting the direction
+```{r}
+1- mean(result)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

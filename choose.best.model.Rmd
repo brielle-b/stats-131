@@ -1,0 +1,269 @@
+---
+title: "model choosing techniques"
+author: "Brielle Balswick"
+date: "10/24/2019"
+output: html_document
+---
+
+#1) Use ggplot2 to create a graphic, based on the LArealestate.csv data (see Site Info/Data Not In Textbook), that shows us 3 (or more) variables on the same plot. What questions about the data set does the graphic answer?
+```{r}
+library(ggplot2)
+LArealestate <- read.csv("~/Desktop/LArealestate.csv")
+ggplot() + geom_point(data = LArealestate, aes(x = sqft, y = beds, color = city))
+```
+
+** This plot shows the number of sqft and beds increase along with the area of LA that the home is located. Beverly Hills looks like it has the largest number of sqft as well as number of beds.**
+
+
+#2) 5.4.8
+We will now perform cross-validation on a simulated data set.
+###(a) Generate a simulated data set as follows:
+```{r}
+set.seed(1)
+y=rnorm(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm (100)
+```
+
+In this data set, what is n and what is p? Write out the model
+used to generate the data in equation form.
+** n is 100 and p is 2. Y=x-2x^2 +epsilon.
+
+###(b) Create a scatterplot of X against Y . Comment on what you find.
+```{r}
+plot(x,y)
+```
+
+**I find that y is greatest when x is zero which makes sense because the most values are going to be closer to zero because it is not drawn uniformly but following a normal distribution.**
+
+###(c) Set a random seed, and then compute the LOOCV errors that
+result from fitting the following four models using least squares:
+i. Y = β0 + β1X +
+ii. Y = β0 + β1X + β2X2 +
+iii. Y = β0 + β1X + β2X2 + β3X3 +
+iv. Y = β0 + β1X + β2X2 + β3X3 + β4X4 + e.
+
+Note you may find it helpful to use the data.frame() function
+to create a single data set containing both X and Y .
+```{r}
+library(leaps)
+library(boot)
+library(dplyr)
+df<-data.frame(x=x,y=y)
+seed_set<- function(new_seed){
+m1<-glm(y~poly(x,1,raw= T), data = df)
+m2<-glm(y~poly(x,2,raw= T), data = df)
+m3<-glm(y~poly(x,3,raw= T), data = df)
+m4<-glm(y~poly(x,4,raw= T), data = df)
+model<- list(m1=m1,m2=m2, m3=m3,m4=m4)
+glm_fit<-list(cv.glm(data=df,glmfit = m1),cv.glm(data=df,glmfit = m2),cv.glm(data=df,glmfit = m3),cv.glm(data=df,glmfit = m4))
+result<-list(sapply(1:4, function(x) glm_fit[[x]]$delta[[1]]), model)
+return(result)
+}
+seed_set(678)[1]
+
+```
+
+###(d) Repeat (c) using another random seed, and report your results.
+Are your results the same as what you got in (c)? Why?
+```{r}
+seed_set(3245)[1]
+```
+
+**The LOOCV doesn't have any randomness in it, the results are the same, despite the drastic change in seed.**
+
+
+###(e) Which of the models in (c) had the smallest LOOCV error? Is
+this what you expected? Explain your answer.
+
+** The model with the smallest LOOCV error was the model with polynomial 2 (quadratic model). This is what I expected, because the graph of y against x, as seen before, looks like a parabola which is quadratic, as well as the true model is quadratic.**
+
+(f) Comment on the statistical significance of the coefficient estimates that results from fitting each of the models in (c) using
+least squares. Do these results agree with the conclusions drawn
+based on the cross-validation results?
+
+```{r}
+library(xtable)
+
+model<- seed_set(678)[2]
+model[[1]]$m1%>%summary()%>%coef()%>% print(comment=FALSE)
+model[[1]]$m2%>%summary()%>%coef()%>% print(comment=FALSE)
+model[[1]]$m3%>%summary()%>%coef()%>% print(comment=FALSE)
+model[[1]]$m4%>%summary()%>%coef()%>% print(comment=FALSE)
+```
+
+** We see that the coefficients for polynomials 1 and 2 are statistically significant as well as the intercept, however, the 3rd and 4th polynomial are not, which agrees with the results found earlier.**
+
+#3) 6.8.8 (a-d)
+
+###a) Use the rnorm() function to generate a predictor X of length
+n = 100, as well as a noise vector  of length n = 100.
+```{r}
+set.seed(678)
+x<-rnorm(100)
+noise<- rnorm(100)
+```
+
+###(b) Generate a response vector Y of length n = 100 according to
+the model
+Y = β0 + β1X + β2X2 + β3X3 + e,
+where β0, β1, β2, and β3 are constants of your choice.
+
+```{r}
+y<-6 + 7*x + 8*x^3 + noise
+df<- data.frame(x=x, y=y)
+```
+
+###(c) Use the regsubsets() function to perform best subset selection in order to choose the best model containing the predictors
+X, X2,...,X10. What is the best model obtained according to
+Cp, BIC, and adjusted R2? Show some plots to provide evidence
+for your answer, and report the coefficients of the best model obtained. Note you will need to use the data.frame() function to
+create a single data set containing both X and Y .
+```{r}
+library(data.table)
+fit<- regsubsets(y~poly(x,10,raw=TRUE), data = df, method = "exhaustive",nvmax = 10)
+fit_summary<- summary(fit)
+mod_names<-paste0("m",1:10)
+out<-fit_summary$outmat
+colnames(out)= paste0("x",1:10)
+out
+full<- data.frame(model=mod_names, cp=summary(fit)$cp, BIC= summary(fit)$bic, adj_r2= summary(fit)$adjr2)
+```
+
+
+```{r}
+#CP
+plot(1:10, full$cp,type = 'b')
+best<-which.min(full$cp)
+best
+chosen<- fit_summary$which[best,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosen]
+summary(lm(y~x_chosen))
+```
+
+
+```{r}
+#BIC
+plot(1:10, full$BIC,type = 'b')
+best<-which.min(full$BIC)
+best
+chosen<- fit_summary$which[best,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosen]
+summary(lm(y~x_chosen))
+```
+
+
+
+```{r}
+#Adjr^2
+plot(1:10, full$adj_r2,type = 'b')
+bestadj<-which.max(full$adj_r2)
+chosenadj<- fit_summary$which[bestadj,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosenadj]
+summary(lm(y~x_chosen))
+```
+
+** The results show that the coefficients of the models selected with BIC and CP and adjusted r^2 are all statistically significant. The selected model was with polynomial 1 and 3 for every model, so in this case, not one stood out among the rest.**
+
+###(d) Repeat (c), using forward stepwise selection and also using backwards stepwise selection. How does your answer compare to the
+results in (c)?
+
+** The results are shown not to be significant for any one test, according to tables shown, the variables 1 and 3 are the only ones significant for every test. This could be offset due to the betas chosen but all are correct because the true model is polynomial 3 which is shown to be the most significant.**
+
+```{r}
+fit<- regsubsets(y~poly(x,10,raw=TRUE), data = df, method = "forward",nvmax = 10)
+fit_summary<- summary(fit)
+mod_names<-paste0("m",1:10)
+out<-fit_summary$outmat
+colnames(out)= paste0("x",1:10)
+out
+full<- data.frame(model=mod_names, cp=summary(fit)$cp, BIC= summary(fit)$bic, adj_r2= summary(fit)$adjr2)
+```
+
+```{r}
+#CP
+plot(1:10, full$cp,type = 'b')
+bestcp<-which.min(full$cp)
+bestcp
+chosen<- fit_summary$which[bestcp,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosen]
+summary(lm(y~x_chosen))
+```
+
+```{r}
+#BIC
+plot(1:10, full$BIC,type = 'b')
+bestbic<-which.min(full$BIC)
+bestbic
+chosen<- fit_summary$which[bestbic,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosen]
+summary(lm(y~x_chosen))
+```
+
+```{r}
+#Adjr^2
+plot(1:10, full$adj_r2,type = 'b')
+bestadj<-which.max(full$adj_r2)
+bestadj
+chosenadj<- fit_summary$which[bestadj,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosenadj]
+summary(lm(y~x_chosen))
+```
+
+```{r}
+fit<- regsubsets(y~poly(x,10,raw=TRUE), data = df, method = "backward",nvmax = 10)
+fit_summary<- summary(fit)
+mod_names<-paste0("m",1:10)
+out<-fit_summary$outmat
+colnames(out)= paste0("x",1:10)
+out
+full<- data.frame(model=mod_names, cp=summary(fit)$cp, BIC= summary(fit)$bic, adj_r2= summary(fit)$adjr2)
+```
+
+```{r}
+#CP
+plot(1:10, full$cp,type = 'b')
+bestcp<-which.min(full$cp)
+bestcp
+chosen<- fit_summary$which[bestcp,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosen]
+summary(lm(y~x_chosen))
+```
+
+```{r}
+
+#BIC
+plot(1:10, full$BIC,type = 'b')
+bestbic<-which.min(full$BIC)
+bestbic
+chosen<- fit_summary$which[bestbic,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosen]
+summary(lm(y~x_chosen))
+```
+
+```{r}
+
+#Adjr^2
+plot(1:10, full$adj_r2,type = 'b')
+bestadj<-which.max(full$adj_r2)
+bestadj
+chosenadj<- fit_summary$which[bestadj,-1]
+x_chosen<-poly(x,10,raw=TRUE)[,chosenadj]
+summary(lm(y~x_chosen))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
