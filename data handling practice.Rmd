@@ -1,0 +1,128 @@
+---
+title: "Data Practice"
+---
+
+```{r}
+library(dplyr)
+ banknote <- read.delim("~/Desktop/banknote.txt")
+plot(banknote$Diagonal,banknote$Y)
+plot(banknote$Top,banknote$Y)
+plot(banknote$Bottom,banknote$Y)
+
+
+```
+
+```{r}
+#banknote<-cbind(banknote[1:5],banknote$Y)
+library(class)
+set.seed(200)
+train<-sample(1:200)
+banktrain<- banknote[train[1:130],]
+banktest<- banknote[train[131:200],]
+banktrue<-banknote[train[1:130],6]
+k1<-knn(banktrain,banktest,banktrue,k=1)
+k2<-knn(banktrain,banktest,banktrue,k=2)
+k3<-knn(banktrain,banktest,banktrue,k=3)
+bank<- banknote[train[131:200],6]
+
+length(which(k1!=bank ))
+length(which(k2!=bank))
+length(which(k3!=bank))
+
+```
+
+```{r}
+library(fivethirtyeight)
+library(MASS)
+data(bechdel)
+head(bechdel)
+set.seed(538)
+bechdel[is.na(bechdel)]<-0
+td<-sample(1:nrow(bechdel), 2*nrow(bechdel)/3, replace= F)
+training<- bechdel[td,-6]
+test<-bechdel[-td, -6]
+train.y<- bechdel[td,6]
+test.y<-bechdel[-td,6]
+#summary(lm(binary~year+imdb+title+test+clean_test+budget+domgross+intgross+budget_2013+domgross_2013+intgross_2013+period_code+decade_code,data= bechdel))
+lda.y<-lda(binary~intgross, data = bechdel)
+predict(lda.y)$class
+
+knn()
+```
+```{r}
+require(ISLR)
+data(Auto)
+#plot(Auto$horsepower,Auto$mpg)
+set.seed(168)
+n<- dim(Auto)[1]
+nn= round(n/2)
+i.train= sample(1:n,nn)
+train_data= Auto[i.train,]
+validate.auto=Auto[-i.train,]
+m1=lm(mpg~horsepower, data = train_data)
+m2=lm(mpg~poly(horsepower,2), data = train_data)
+m3=lm(mpg~poly(horsepower,3), data = train_data)
+m4=lm(mpg~poly(horsepower,4), data = train_data)
+m5=lm(mpg~poly(horsepower,5), data = train_data)
+m6=lm(mpg~poly(horsepower,6), data = train_data)
+m7=lm(mpg~poly(horsepower,7), data = train_data)
+
+predictions=predict(m1,newdata = validate.auto)
+predictions2=predict(m2,newdata = validate.auto)
+predictions3=predict(m3,newdata = validate.auto)
+predictions4=predict(m4,newdata = validate.auto)
+predictions5=predict(m5,newdata = validate.auto)
+predictions6=predict(m6,newdata = validate.auto)
+predictions7=predict(m7,newdata = validate.auto)
+
+n.valid= dim(validate.auto)[1]
+MSE1= sum((validate.auto$mpg-predictions)^2/n.valid)
+MSE2= sum((validate.auto$mpg-predictions2)^2/n.valid)
+MSE3= sum((validate.auto$mpg-predictions3)^2/n.valid)
+MSE4= sum((validate.auto$mpg-predictions4)^2/n.valid)
+MSE5= sum((validate.auto$mpg-predictions5)^2/n.valid)
+MSE6= sum((validate.auto$mpg-predictions6)^2/n.valid)
+MSE7= sum((validate.auto$mpg-predictions7)^2/n.valid)
+plot(c(MSE1,MSE2,MSE3,MSE4,MSE5,MSE6,MSE7))
+```
+
+
+```{r}
+pgatour2006 <- read.csv("~/Desktop/pgatour2006.csv")
+lprize<-log(pgatour2006$PrizeMoney)
+mfull<-lm(log(PrizeMoney)~.,data= pgatour2006)
+```
+
+
+```{r}
+set.seed(678)
+n<-nrow(bechdel)
+kfold=10
+k<- sample(rep(1:kfold, length.out= n),n, replace = FALSE)
+for (i in 1:nrow(bechdel)){
+i.test<- which(k == i)}
+train.frame<- bechdel[-i.test]
+test.frame<- bechdel[i.test]
+
+cv.error = c()
+glm.fit<- glm(binary~., data= bechdel)
+cv.error<-cv.glm(bechdel, glm.fit, K=10)$delta[1]
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
